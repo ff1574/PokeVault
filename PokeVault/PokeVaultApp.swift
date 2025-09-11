@@ -1,10 +1,3 @@
-//
-//  PokeVaultApp.swift
-//  PokeVault
-//
-//  Created by Franko Fister (RIT Student) on 9/11/25.
-//
-
 import SwiftUI
 
 @main
