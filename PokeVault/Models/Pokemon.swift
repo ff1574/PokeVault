@@ -1,7 +1,5 @@
 import Foundation
 
-// The initial list response only has name and URL.
-// We'll create a new model for the detailed data.
 struct Pokemon: Codable, Identifiable {
     let id: Int
     let name: String
@@ -9,10 +7,7 @@ struct Pokemon: Codable, Identifiable {
     let abilities: [AbilityWrapper]
     let stats: [StatWrapper]
     let types: [TypeWrapper]
-    
-    // The PokeAPI provides the ID in the URL, but the detailed endpoint
-    // provides an 'id' directly. For the list view, we will still need to
-    // extract it from the URL. Let's make a new struct for the list item.
+    let species: NamedAPIResource
 }
 
 struct PokemonListItem: Codable, Identifiable {
@@ -24,7 +19,6 @@ struct PokemonListItem: Codable, Identifiable {
     }
 }
 
-// Structs for the detailed data
 struct Sprites: Codable {
     let front_default: String?
 }
@@ -47,7 +41,27 @@ struct NamedAPIResource: Codable {
     let url: String
 }
 
-// This struct is for the initial list response
 struct PokemonListResponse: Codable {
     let results: [PokemonListItem]
+}
+
+struct PokemonSpecies: Codable {
+    let evolution_chain: APIResource
+}
+
+struct APIResource: Codable {
+    let url: String
+}
+
+struct EvolutionChain: Codable {
+    let chain: EvolutionNode
+}
+
+struct EvolutionNode: Codable {
+    let species: NamedAPIResource
+    let evolves_to: [EvolutionNode]
+}
+
+struct EvolutionData {
+    let evolutionLine: [NamedAPIResource]
 }

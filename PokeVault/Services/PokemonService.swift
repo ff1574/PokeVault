@@ -47,4 +47,48 @@ class PokemonService: ObservableObject {
             }
         }.resume()
     }
+
+    func fetchEvolutionData(for pokemon: Pokemon, completion: @escaping (EvolutionData?) -> Void) {
+        guard let speciesURL = URL(string: pokemon.species.url) else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: speciesURL) { data, response, error in
+            guard let data = data,
+                  let species = try? JSONDecoder().decode(PokemonSpecies.self, from: data),
+                  let evolutionURL = URL(string: species.evolution_chain.url) else {
+                completion(nil)
+                return
+            }
+
+            URLSession.shared.dataTask(with: evolutionURL) { data, response, error in
+                guard let data = data,
+                      let evolutionChain = try? JSONDecoder().decode(EvolutionChain.self, from: data) else {
+                    completion(nil)
+                    return
+                }
+
+                // Parse the evolution chain to get the full line
+                var evolutionLine: [NamedAPIResource] = []
+                var currentNode = evolutionChain.chain
+                
+                // Recursively traverse the evolution chain
+                func parseEvolutions(node: EvolutionNode) {
+                    evolutionLine.append(node.species)
+                    for nextNode in node.evolves_to {
+                        parseEvolutions(node: nextNode)
+                    }
+                }
+                
+                parseEvolutions(node: currentNode)
+
+                let evolution = EvolutionData(evolutionLine: evolutionLine)
+                
+                DispatchQueue.main.async {
+                    completion(evolution)
+                }
+            }.resume()
+        }.resume()
+    }
 }
