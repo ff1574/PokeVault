@@ -8,6 +8,7 @@ struct Pokemon: Codable, Identifiable {
     let sprites: Sprites
     let abilities: [AbilityWrapper]
     let stats: [StatWrapper]
+    let types: [TypeWrapper]
     
     // The PokeAPI provides the ID in the URL, but the detailed endpoint
     // provides an 'id' directly. For the list view, we will still need to
@@ -35,6 +36,10 @@ struct AbilityWrapper: Codable {
 struct StatWrapper: Codable {
     let stat: NamedAPIResource
     let base_stat: Int
+}
+
+struct TypeWrapper: Codable {
+    let type: NamedAPIResource
 }
 
 struct NamedAPIResource: Codable {
