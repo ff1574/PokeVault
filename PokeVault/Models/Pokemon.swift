@@ -39,6 +39,10 @@ struct TypeWrapper: Codable {
 struct NamedAPIResource: Codable {
     let name: String
     let url: String
+    
+    var id: String? {
+        return url.split(separator: "/").last?.description
+    }
 }
 
 struct PokemonListResponse: Codable {

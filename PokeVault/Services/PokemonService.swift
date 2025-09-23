@@ -1,28 +1,57 @@
 import Foundation
 import Combine
 
-@MainActor // Mark the entire class as running on the main actor
+@MainActor
 class PokemonService: ObservableObject {
     
     @Published var pokemonList: [PokemonListItem] = []
+    @Published var detailedPokemonList: [Pokemon] = []
+    @Published var isLoading = false
     
     func fetchPokemonList() {
+        isLoading = true
         guard let url = URL(string: "https://pokeapi.co/api/v2/pokemon?limit=151") else {
+            isLoading = false
             return
         }
         
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                do {
-                    let decodedResponse = try JSONDecoder().decode(PokemonListResponse.self, from: data)
-                    // Since the class is @MainActor, this assignment will automatically
-                    // happen on the main thread.
-                    self.pokemonList = decodedResponse.results
-                } catch {
-                    print("Decoding list failed: \(error)")
-                }
+        URLSession.shared.dataTask(with: url) { [weak self] data, response, error in
+            guard let self = self, let data = data else {
+                DispatchQueue.main.async { self?.isLoading = false }
+                return
+            }
+            
+            do {
+                let decodedResponse = try JSONDecoder().decode(PokemonListResponse.self, from: data)
+                self.pokemonList = decodedResponse.results
+                
+                self.fetchDetailedPokemonList()
+                
+            } catch {
+                print("Decoding list failed: \(error)")
+                DispatchQueue.main.async { self.isLoading = false }
             }
         }.resume()
+    }
+    
+    func fetchDetailedPokemonList() {
+        let dispatchGroup = DispatchGroup()
+        var tempPokemonList: [Pokemon] = []
+        
+        for item in pokemonList {
+            dispatchGroup.enter()
+            fetchPokemonDetails(from: item.url) { pokemon in
+                if let pokemon = pokemon {
+                    tempPokemonList.append(pokemon)
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            self.detailedPokemonList = tempPokemonList.sorted(by: { $0.id < $1.id })
+            self.isLoading = false
+        }
     }
     
     func fetchPokemonDetails(from urlString: String, completion: @escaping (Pokemon?) -> Void) {
@@ -35,19 +64,23 @@ class PokemonService: ObservableObject {
             if let data = data {
                 do {
                     let decodedPokemon = try JSONDecoder().decode(Pokemon.self, from: data)
-                    // The completion handler is called on the main thread
-                    // because the service is marked as @MainActor.
-                    completion(decodedPokemon)
+                    DispatchQueue.main.async {
+                        completion(decodedPokemon)
+                    }
                 } catch {
                     print("Decoding details failed: \(error)")
-                    completion(nil)
+                    DispatchQueue.main.async {
+                        completion(nil)
+                    }
                 }
             } else {
-                completion(nil)
+                DispatchQueue.main.async {
+                    completion(nil)
+                }
             }
         }.resume()
     }
-
+    
     func fetchEvolutionData(for pokemon: Pokemon, completion: @escaping (EvolutionData?) -> Void) {
         guard let speciesURL = URL(string: pokemon.species.url) else {
             completion(nil)
@@ -69,13 +102,16 @@ class PokemonService: ObservableObject {
                     return
                 }
 
-                // Parse the evolution chain to get the full line
                 var evolutionLine: [NamedAPIResource] = []
                 var currentNode = evolutionChain.chain
                 
-                // Recursively traverse the evolution chain
                 func parseEvolutions(node: EvolutionNode) {
-                    evolutionLine.append(node.species)
+                    if let pokemonId = node.species.url.split(separator: "/").last, !pokemonId.isEmpty {
+                        let correctedURL = "https://pokeapi.co/api/v2/pokemon/\(pokemonId)/"
+                        let correctedResource = NamedAPIResource(name: node.species.name, url: correctedURL)
+                        evolutionLine.append(correctedResource)
+                    }
+                    
                     for nextNode in node.evolves_to {
                         parseEvolutions(node: nextNode)
                     }

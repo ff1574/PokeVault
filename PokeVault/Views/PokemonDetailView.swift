@@ -116,7 +116,6 @@ struct PokemonDetailView: View {
                         )
                         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
                         
-                        // --- UPDATED EVOLUTION SECTION ---
                         if let evolutionData = evolutionData {
                             EvolutionView(currentPokemon: pokemon, evolutionLine: evolutionData.evolutionLine)
                         }
@@ -133,7 +132,6 @@ struct PokemonDetailView: View {
     }
 }
 
-// Custom View for a single stat bar
 struct StatBarView: View {
     let stat: StatWrapper
     let maxStatValue = 255.0
@@ -181,7 +179,6 @@ struct StatBarView: View {
     }
 }
 
-// Updated Custom View for the evolution section
 struct EvolutionView: View {
     let currentPokemon: Pokemon
     let evolutionLine: [NamedAPIResource]
@@ -195,13 +192,16 @@ struct EvolutionView: View {
             Divider()
                 .background(.white.opacity(0.7))
             
-            HStack(spacing: 20) {
-                // Display the entire evolution chain
-                ForEach(evolutionLine, id: \.name) { pokemon in
-                    EvolutionStep(name: pokemon.name, imageURL: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(pokemon.url.split(separator: "/").last ?? "").png", isCurrent: pokemon.name == currentPokemon.name)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 20) {
+                    ForEach(evolutionLine, id: \.name) { pokemon in
+                        NavigationLink(destination: PokemonDetailFetchView(url: pokemon.url)) {
+                            EvolutionStep(name: pokemon.name, imageURL: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(pokemon.id ?? "").png", isCurrent: pokemon.name == currentPokemon.name)
+                        }
+                    }
                 }
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity)
         }
         .padding()
         .background(Color.black.opacity(0.4))
@@ -214,7 +214,6 @@ struct EvolutionView: View {
     }
 }
 
-// Updated Helper view for a single evolution step
 struct EvolutionStep: View {
     let name: String
     let imageURL: String
@@ -238,6 +237,44 @@ struct EvolutionStep: View {
                 .font(.caption)
                 .foregroundColor(.white)
                 .fontWeight(isCurrent ? .bold : .regular)
+        }
+    }
+}
+
+struct PokemonDetailFetchView: View {
+    let url: String
+    @State private var pokemon: Pokemon?
+    @State private var isLoading = true
+    @StateObject private var pokemonService = PokemonService()
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        Group {
+            if isLoading {
+                ProgressView("Loading...")
+            } else if let pokemon = pokemon {
+                PokemonDetailView(pokemon: pokemon)
+            } else {
+                Text("Failed to load Pokemon data.")
+            }
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "arrow.backward.circle.fill")
+                        .foregroundColor(.white)
+                        .font(.title)
+                }
+            }
+        }
+        .onAppear {
+            pokemonService.fetchPokemonDetails(from: url) { fetchedPokemon in
+                self.pokemon = fetchedPokemon
+                self.isLoading = false
+            }
         }
     }
 }

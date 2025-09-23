@@ -6,17 +6,22 @@ struct PokedexView: View {
     @State private var isShowingFilter = false
     @State private var selectedTypes: Set<String> = []
     
-    var filteredPokemonList: [PokemonListItem] {
-        var list = pokemonService.pokemonList
+    var filteredPokemonList: [Pokemon] {
+        var list = pokemonService.detailedPokemonList
         
         // Filter by search text
         if !searchText.isEmpty {
             list = list.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
         }
         
-        // Filter by selected types (this requires fetching details for each Pokemon, which is inefficient)
-        // For a more robust solution, you would need to refactor your PokemonService to fetch a filtered list
-        // from the API. For demonstration purposes, we will not filter by type in this list view.
+        // Filter by selected types
+        if !selectedTypes.isEmpty {
+            list = list.filter { pokemon in
+                let pokemonTypes = pokemon.types.map { $0.type.name }
+                // Check if any of the pokemon's types are in the selected types set
+                return !selectedTypes.isDisjoint(with: pokemonTypes)
+            }
+        }
         
         return list
     }
@@ -36,74 +41,88 @@ struct PokedexView: View {
                                     .foregroundColor(.gray)
                                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                                     .padding(.leading, 8)
-                                
-                                if !searchText.isEmpty {
-                                    Button(action: {
-                                        self.searchText = ""
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.gray)
-                                            .padding(.trailing, 8)
-                                    }
-                                }
                             }
                         )
                     
                     Button(action: {
                         isShowingFilter.toggle()
                     }) {
-                        Image(systemName: "slider.horizontal.3.square.fill")
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
                             .font(.title2)
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(.blue)
+                    }
+                    .padding(.leading, 8)
+                    .sheet(isPresented: $isShowingFilter) {
+                        FilterView(selectedTypes: $selectedTypes)
                     }
                 }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
+                .padding()
                 
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(filteredPokemonList) { pokemonListItem in
-                            NavigationLink(destination: PokemonDetailFetchView(url: pokemonListItem.url)) {
-                                PokemonRowView(pokemonListItem: pokemonListItem)
-                            }
+                if pokemonService.isLoading {
+                    ProgressView("Loading Pokémon...")
+                        .padding()
+                } else if filteredPokemonList.isEmpty && !searchText.isEmpty {
+                    ContentUnavailableView.search(text: searchText)
+                } else if filteredPokemonList.isEmpty && selectedTypes.isEmpty {
+                    Text("No Pokémon found.")
+                } else {
+                    List(filteredPokemonList) { pokemon in
+                        NavigationLink(destination: PokemonDetailView(pokemon: pokemon)) {
+                            PokemonCardView(pokemon: pokemon)
                         }
+                        .listRowSeparator(.hidden)
                     }
-                    .padding()
+                    .listStyle(.plain)
                 }
-                .background(Color.gray.opacity(0.1))
             }
             .onAppear {
-                pokemonService.fetchPokemonList()
+                if pokemonService.detailedPokemonList.isEmpty {
+                    pokemonService.fetchPokemonList()
+                }
             }
-        }
-        .sheet(isPresented: $isShowingFilter) {
-            FilterView(selectedTypes: $selectedTypes)
         }
     }
 }
 
-struct PokemonRowView: View {
-    let pokemonListItem: PokemonListItem
+struct PokemonCardView: View {
+    let pokemon: Pokemon
     
     var body: some View {
         HStack(spacing: 15) {
-            AsyncImage(url: URL(string: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/\(pokemonListItem.id).png")) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 60, height: 60)
-            } placeholder: {
-                ProgressView()
-                    .frame(width: 60, height: 60)
+            AsyncImage(url: URL(string: pokemon.sprites.front_default ?? "")) { phase in
+                if let image = phase.image {
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 80, height: 80)
+                } else {
+                    ProgressView()
+                        .frame(width: 80, height: 80)
+                }
             }
-            .background(Color.white)
-            .clipShape(Circle())
-            .shadow(radius: 3)
             
-            Text(pokemonListItem.name.capitalized)
-                .font(.title2)
-                .fontWeight(.medium)
-                .foregroundColor(.black)
+            VStack(alignment: .leading, spacing: 5) {
+                // Displaying ID
+                Text(String(format: "#%03d", pokemon.id))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                // Displaying Name
+                Text(pokemon.name.capitalized)
+                    .font(.title2)
+                    .fontWeight(.medium)
+                    .foregroundColor(.black)
+                
+                // Displaying Type Icons
+                HStack(spacing: 5) {
+                    ForEach(pokemon.types, id: \.type.name) { typeWrapper in
+                        Image(typeWrapper.type.name.lowercased())
+                            .resizable()
+                            .frame(width: 25, height: 25)
+                            .shadow(radius: 2)
+                    }
+                }
+            }
             
             Spacer()
         }
@@ -122,7 +141,11 @@ struct FilterView: View {
         NavigationStack {
             List {
                 ForEach(allTypes, id: \.self) { type in
-                    HStack {
+                    HStack(spacing: 15) {
+                        Image(type)
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                            .shadow(radius: 2)
                         Text(type.capitalized)
                         Spacer()
                         if selectedTypes.contains(type) {
@@ -130,7 +153,7 @@ struct FilterView: View {
                                 .foregroundColor(.blue)
                         }
                     }
-                    .contentShape(Rectangle()) // Make the whole row tappable
+                    .contentShape(Rectangle())
                     .onTapGesture {
                         if selectedTypes.contains(type) {
                             selectedTypes.remove(type)
