@@ -5,6 +5,7 @@ struct Pokemon: Codable, Identifiable {
     let name: String
     let sprites: Sprites
     let abilities: [AbilityWrapper]
+    let moves: [MoveWrapper]
     let stats: [StatWrapper]
     let types: [TypeWrapper]
     let species: NamedAPIResource
@@ -27,6 +28,10 @@ struct AbilityWrapper: Codable {
     let ability: NamedAPIResource
 }
 
+struct MoveWrapper: Codable {
+    let move: NamedAPIResource
+}
+
 struct StatWrapper: Codable {
     let stat: NamedAPIResource
     let base_stat: Int
@@ -47,6 +52,42 @@ struct NamedAPIResource: Codable {
 
 struct PokemonListResponse: Codable {
     let results: [PokemonListItem]
+}
+
+struct MoveDetail: Codable, Identifiable {
+    let name: String
+    let pp: Int?
+    let accuracy: Int?
+    let power: Int?
+    let type: NamedAPIResource
+    let effect_entries: [EffectEntry]
+    
+    var shortEffect: String {
+        return effect_entries.first { $0.language.name == "en" }?.short_effect ?? "No effect description."
+    }
+    
+    var id: String {
+        return name
+    }
+}
+
+struct AbilityDetail: Codable, Identifiable {
+    let name: String
+    let effect_entries: [EffectEntry]
+    
+    var effect: String? {
+        return effect_entries.first { $0.language.name == "en" }?.effect
+    }
+    
+    var id: String {
+        return name
+    }
+}
+
+struct EffectEntry: Codable {
+    let effect: String?
+    let short_effect: String?
+    let language: NamedAPIResource
 }
 
 struct PokemonSpecies: Codable {

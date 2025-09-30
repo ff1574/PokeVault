@@ -81,6 +81,76 @@ class PokemonService: ObservableObject {
         }.resume()
     }
     
+    func fetchAllMoveDetails(for pokemon: Pokemon, completion: @escaping ([MoveDetail]) -> Void) {
+        let dispatchGroup = DispatchGroup()
+        var moveDetails: [MoveDetail] = []
+        let sortedMoves = pokemon.moves.sorted { $0.move.name < $1.move.name }
+        
+        for moveWrapper in sortedMoves {
+            dispatchGroup.enter()
+            fetchMoveDetail(from: moveWrapper.move.url) { detail in
+                if let detail = detail {
+                    moveDetails.append(detail)
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            let sortedDetails = moveDetails.sorted { $0.name < $1.name }
+            completion(sortedDetails)
+        }
+    }
+    
+    private func fetchMoveDetail(from urlString: String, completion: @escaping (MoveDetail?) -> Void) {
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            guard let data = data, let moveDetail = try? JSONDecoder().decode(MoveDetail.self, from: data) else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            DispatchQueue.main.async { completion(moveDetail) }
+        }.resume()
+    }
+    
+    func fetchAllAbilityDetails(for pokemon: Pokemon, completion: @escaping ([AbilityDetail]) -> Void) {
+        let dispatchGroup = DispatchGroup()
+        var abilityDetails: [AbilityDetail] = []
+        
+        for abilityWrapper in pokemon.abilities {
+            dispatchGroup.enter()
+            fetchAbilityDetail(from: abilityWrapper.ability.url) { detail in
+                if let detail = detail {
+                    abilityDetails.append(detail)
+                }
+                dispatchGroup.leave()
+            }
+        }
+        
+        dispatchGroup.notify(queue: .main) {
+            completion(abilityDetails.sorted { $0.name < $1.name })
+        }
+    }
+    
+    private func fetchAbilityDetail(from urlString: String, completion: @escaping (AbilityDetail?) -> Void) {
+        guard let url = URL(string: urlString) else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            guard let data = data, let abilityDetail = try? JSONDecoder().decode(AbilityDetail.self, from: data) else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+            DispatchQueue.main.async { completion(abilityDetail) }
+        }.resume()
+    }
+    
     func fetchEvolutionData(for pokemon: Pokemon, completion: @escaping (EvolutionData?) -> Void) {
         guard let speciesURL = URL(string: pokemon.species.url) else {
             completion(nil)

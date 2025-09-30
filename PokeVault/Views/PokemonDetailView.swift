@@ -3,6 +3,8 @@ import SwiftUI
 struct PokemonDetailView: View {
     let pokemon: Pokemon
     @State private var evolutionData: EvolutionData?
+    @State private var moveDetails: [MoveDetail]?
+    @State private var abilityDetails: [AbilityDetail]?
     @StateObject private var pokemonService = PokemonService()
     
     var backgroundGradient: LinearGradient {
@@ -70,55 +72,24 @@ struct PokemonDetailView: View {
                     .padding()
                     
                     VStack(spacing: 20) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Moves")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                            
-                            Divider()
-                                .background(.white.opacity(0.7))
-                            
-                            ForEach(pokemon.abilities, id: \.ability.name) { abilityWrapper in
-                                Text(abilityWrapper.ability.name.capitalized)
-                                    .font(.body)
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.black.opacity(0.4))
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                        )
-                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        
-                        VStack(alignment: .leading, spacing: 15) {
-                            Text("Base Stats")
-                                .font(.system(size: 24, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
-                            
-                            Divider()
-                                .background(.white.opacity(0.7))
-                            
-                            ForEach(pokemon.stats, id: \.stat.name) { statWrapper in
-                                StatBarView(stat: statWrapper)
-                            }
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.black.opacity(0.4))
-                        .cornerRadius(20)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.white.opacity(0.3), lineWidth: 2)
-                        )
-                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        
+                        // 1. EVOLUTIONS (First Section)
                         if let evolutionData = evolutionData {
                             EvolutionView(currentPokemon: pokemon, evolutionLine: evolutionData.evolutionLine)
+                        } else {
+                            Text("Loading Evolutions...")
+                                .foregroundColor(.white)
+                                .padding()
                         }
+                        
+                        // 2. BASE STATS (Second Section)
+                        BaseStatsCardView(pokemon: pokemon)
+
+                        // 3. MOVES (Third Section - with expandable/retractable logic)
+                        MovesCardView(moveDetails: moveDetails)
+
+                        // 4. ABILITIES (Fourth Section - with expandable/retractable logic)
+                        AbilitiesCardView(abilityDetails: abilityDetails)
+                        
                     }
                     .padding()
                 }
@@ -128,7 +99,41 @@ struct PokemonDetailView: View {
             pokemonService.fetchEvolutionData(for: pokemon) { fetchedData in
                 self.evolutionData = fetchedData
             }
+            pokemonService.fetchAllMoveDetails(for: pokemon) { details in
+                self.moveDetails = details
+            }
+            pokemonService.fetchAllAbilityDetails(for: pokemon) { details in
+                self.abilityDetails = details
+            }
         }
+    }
+}
+
+struct BaseStatsCardView: View {
+    let pokemon: Pokemon
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Base Stats")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            
+            Divider()
+                .background(.white.opacity(0.7))
+            
+            ForEach(pokemon.stats, id: \.stat.name) { statWrapper in
+                StatBarView(stat: statWrapper)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.4))
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
     }
 }
 
@@ -178,6 +183,206 @@ struct StatBarView: View {
         }
     }
 }
+
+struct AbilitiesCardView: View {
+    let abilityDetails: [AbilityDetail]?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Abilities")
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+            
+            Divider()
+                .background(.white.opacity(0.7))
+            
+            if let details = abilityDetails {
+                ForEach(details) { ability in
+                    AbilityDetailRow(ability: ability)
+                }
+            } else {
+                Text("Loading abilities...")
+                    .foregroundColor(.white.opacity(0.8))
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.4))
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+}
+
+struct AbilityDetailRow: View {
+    let ability: AbilityDetail
+    @State private var isExpanded: Bool = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(ability.name.capitalized.replacingOccurrences(of: "-", with: " "))
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                Button(action: {
+                    withAnimation {
+                        isExpanded.toggle()
+                    }
+                }) {
+                    Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                        .foregroundColor(.cyan)
+                }
+            }
+            
+            Text(ability.effect ?? "No description available.")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.8))
+                .lineLimit(isExpanded ? nil : 2) // Limit to 2 lines when collapsed
+        }
+        .padding(.vertical, 5)
+    }
+}
+
+struct MovesCardView: View {
+    let moveDetails: [MoveDetail]?
+    @State private var isExpanded: Bool = false
+    
+    var movesToShow: [MoveDetail] {
+        guard let details = moveDetails else { return [] }
+        // Show only the first 2 moves if not expanded
+        return isExpanded ? details : Array(details.prefix(2))
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Moves")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                if let details = moveDetails, details.count > 2 {
+                    Button(action: {
+                        withAnimation {
+                            isExpanded.toggle()
+                        }
+                    }) {
+                        Text(isExpanded ? "Show Less" : "Show All (\(details.count))")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundColor(.cyan)
+                        Image(systemName: isExpanded ? "chevron.up.circle.fill" : "chevron.down.circle.fill")
+                            .foregroundColor(.cyan)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            
+            Divider()
+                .background(.white.opacity(0.7))
+            
+            if moveDetails != nil {
+                ForEach(movesToShow) { move in
+                    MoveDetailRow(move: move)
+                }
+                
+                if movesToShow.isEmpty {
+                    Text("No moves learned.")
+                        .foregroundColor(.white.opacity(0.8))
+                }
+            } else {
+                Text("Loading moves...")
+                    .foregroundColor(.white.opacity(0.8))
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.4))
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(Color.white.opacity(0.3), lineWidth: 2)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+}
+
+struct MoveDetailRow: View {
+    let move: MoveDetail
+    
+    var typeColor: Color {
+        return Constants.pokemonTypeColor[move.type.name] ?? .gray
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Text(move.name.capitalized.replacingOccurrences(of: "-", with: " "))
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                HStack(spacing: 5) {
+                    Image(move.type.name.lowercased())
+                        .resizable()
+                        .frame(width: 15, height: 15)
+                        .shadow(radius: 1)
+                    Text(move.type.name.capitalized)
+                        .font(.caption)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(typeColor.opacity(0.8))
+                        .cornerRadius(5)
+                }
+            }
+            
+            HStack(spacing: 15) {
+                // Power
+                DetailStatPill(label: "Power", value: move.power != nil ? String(move.power!) : "--")
+                
+                // Accuracy
+                DetailStatPill(label: "Acc", value: move.accuracy != nil ? "\(move.accuracy!)%" : "--")
+                
+                // PP
+                DetailStatPill(label: "PP", value: move.pp != nil ? String(move.pp!) : "--")
+            }
+            
+            // Move Effect Description
+            if move.shortEffect != "No effect description." {
+                Text("Effect: \(move.shortEffect.replacingOccurrences(of: "$effect_chance%", with: ""))") // Clean up effect string
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+        }
+        .padding(.vertical, 5)
+    }
+}
+
+struct DetailStatPill: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(label + ":")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+            
+            Text(value)
+                .font(.caption.weight(.bold))
+                .foregroundColor(.white)
+        }
+    }
+}
+
 
 struct EvolutionView: View {
     let currentPokemon: Pokemon
