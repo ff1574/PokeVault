@@ -6,6 +6,9 @@ struct PokemonDetailView: View {
     @State private var moveDetails: [MoveDetail]?
     @State private var abilityDetails: [AbilityDetail]?
     @StateObject private var pokemonService = PokemonService()
+    @EnvironmentObject var teamManager: TeamManager
+    @State private var showTeamAlert = false
+    @State private var alertMessage = ""
     
     var backgroundGradient: LinearGradient {
         let colors = pokemon.types.map { typeWrapper in
@@ -19,6 +22,10 @@ struct PokemonDetailView: View {
         }
     }
     
+    var isInTeam: Bool {
+        teamManager.team.contains(where: { $0.id == pokemon.id })
+    }
+    
     var body: some View {
         ZStack {
             backgroundGradient
@@ -27,26 +34,61 @@ struct PokemonDetailView: View {
             ScrollView {
                 VStack(spacing: 0) {
                     // Top section with image and name
-                    ZStack(alignment: .bottom) {
-                        Color.clear
-                            .frame(height: 250)
-                        
-                        AsyncImage(url: URL(string: pokemon.sprites.front_default ?? "")) { phase in
-                            if let image = phase.image {
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 200, height: 200)
-                                    .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
-                                    .offset(y: 40)
-                            } else if phase.error != nil {
-                                Image(systemName: "xmark.circle")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.red)
-                            } else {
-                                ProgressView()
+                    ZStack(alignment: .topTrailing) {
+                        ZStack(alignment: .bottom) {
+                            Color.clear
+                                .frame(height: 250)
+                            
+                            AsyncImage(url: URL(string: pokemon.sprites.front_default ?? "")) { phase in
+                                if let image = phase.image {
+                                    image
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fit)
+                                        .frame(width: 200, height: 200)
+                                        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+                                        .offset(y: 40)
+                                } else if phase.error != nil {
+                                    Image(systemName: "xmark.circle")
+                                        .font(.largeTitle)
+                                        .foregroundColor(.red)
+                                } else {
+                                    ProgressView()
+                                }
                             }
                         }
+                        
+                        // Add to Team Button
+                        Button(action: {
+                            if isInTeam {
+                                teamManager.remove(pokemon: pokemon)
+                                alertMessage = "\(pokemon.name.capitalized) removed from team!"
+                            } else {
+                                let added = teamManager.add(pokemon: pokemon)
+                                if added {
+                                    alertMessage = "\(pokemon.name.capitalized) added to team!"
+                                } else if teamManager.isTeamFull {
+                                    alertMessage = "Team is full! (Max 6 Pokémon)"
+                                } else {
+                                    alertMessage = "\(pokemon.name.capitalized) is already in your team!"
+                                }
+                            }
+                            showTeamAlert = true
+                        }) {
+                            HStack(spacing: 5) {
+                                Image(systemName: isInTeam ? "checkmark.circle.fill" : "plus.circle.fill")
+                                    .font(.title3)
+                                Text(isInTeam ? "In Team" : "Add to Team")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 15)
+                            .padding(.vertical, 10)
+                            .background(isInTeam ? Color.green.opacity(0.8) : Color.blue.opacity(0.8))
+                            .cornerRadius(20)
+                            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.top, 10)
                     }
                     
                     VStack(spacing: 10) {
@@ -83,31 +125,36 @@ struct PokemonDetailView: View {
                         
                         // 2. BASE STATS (Second Section)
                         BaseStatsCardView(pokemon: pokemon)
-
-                        // 3. MOVES (Third Section - with expandable/retractable logic)
-                        MovesCardView(moveDetails: moveDetails)
-
-                        // 4. ABILITIES (Fourth Section - with expandable/retractable logic)
-                        AbilitiesCardView(abilityDetails: abilityDetails)
                         
+                        // 3. MOVES (Third Section)
+                        MovesCardView(moveDetails: moveDetails)
+                        
+                        // 4. ABILITIES (Fourth Section)
+                        AbilitiesCardView(abilityDetails: abilityDetails)
                     }
                     .padding()
                 }
             }
         }
+        .alert(alertMessage, isPresented: $showTeamAlert) {
+            Button("OK", role: .cancel) { }
+        }
         .onAppear {
             pokemonService.fetchEvolutionData(for: pokemon) { fetchedData in
                 self.evolutionData = fetchedData
             }
+            
             pokemonService.fetchAllMoveDetails(for: pokemon) { details in
                 self.moveDetails = details
             }
+            
             pokemonService.fetchAllAbilityDetails(for: pokemon) { details in
                 self.abilityDetails = details
             }
         }
     }
 }
+
 
 struct BaseStatsCardView: View {
     let pokemon: Pokemon
