@@ -5,8 +5,6 @@ class TeamManager: ObservableObject {
     private let teamCapacity = 6
     @Published var team: [Pokemon] = []
     
-    // MARK: - Team Management
-    
     var isTeamFull: Bool {
         team.count >= teamCapacity
     }
@@ -27,17 +25,15 @@ class TeamManager: ObservableObject {
         team.removeAll { $0.id == pokemon.id }
     }
     
-    // MARK: - Team Analysis (The "Cool Feature")
-    
     struct TypeAnalysis {
         let type: String
         let strength: Int
     }
     
-    /// Calculates the overall strength/weakness of the current team against all 18 types.
-    /// Strength is calculated by checking the sum of effective damage modifiers across all team members.
-    /// A score > 0 means the team generally resists/is immune to the type.
-    /// A score < 0 means the team generally takes super effective damage from the type.
+    // Calculates the overall strength/weakness of the current team against all 18 types.
+    // Strength is calculated by checking the sum of effective damage modifiers across all team members.
+    // A score > 0 means the team generally resists/is immune to the type.
+    // A score < 0 means the team generally takes super effective damage from the type.
     func getTeamTypeAnalysis() -> [String: TypeAnalysis] {
         if team.isEmpty {
             return [:]
@@ -48,14 +44,14 @@ class TeamManager: ObservableObject {
             result[type] = 0.0
         }
         
-        // 2. Iterate through each PokÃ©mon and update the analysis
+        // 2. Iterate through each Pokemon and update the analysis
         for pokemon in team {
             let pokeTypes = pokemon.types.map { $0.type.name }
             
-            // Analyze how the PokÃ©mon's type(s) defend against an *attacking type*
+            // Analyze how the Pokemon's type defend against an attacking type
             for (attackingType, interactions) in Constants.pokemonTypeInteraction {
                 for (defendingType, multiplier) in interactions {
-                    // Check if the PokÃ©mon has the defending type
+                    // Check if the Pokemon has the defending type
                     if pokeTypes.contains(defendingType) {
                         
                         // Apply the damage multiplier to the score.
@@ -67,7 +63,7 @@ class TeamManager: ObservableObject {
                             analysis[attackingType]? += 1.5
                         case 0.5: // Resistance
                             analysis[attackingType]? += 1.0
-                        case 1.0: // Normal damage - neutral, do not add to score
+                        case 1.0: // Normal damage
                             break
                         case 2.0: // Weakness
                             analysis[attackingType]? -= 1.0
@@ -102,7 +98,7 @@ class TeamManager: ObservableObject {
         return finalAnalysis.sorted { $0.key < $1.key }.reduce(into: [:]) { $0[$1.key] = $1.value }
     }
     
-    // Other cool feature: calculate the team's average base stats
+    // Calculate the team's average base stats
     func getAverageBaseStats() -> [String: Int] {
         guard !team.isEmpty else { return [:] }
         

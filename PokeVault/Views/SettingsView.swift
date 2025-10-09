@@ -101,7 +101,7 @@ struct SettingsView: View {
                         .padding(.horizontal)
                         
                         // App Version
-                        Text("PokeVault v1.0.0")
+                        Text("PokeVault v1.0")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.top, 10)

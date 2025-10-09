@@ -61,7 +61,7 @@ struct TeamSlotEmptyView: View {
     
     var body: some View {
         Button(action: {
-            selectedTab = 1  // Switch to Pokédex tab (index 1)
+            selectedTab = 1  // Switch to Pokédex tab
         }) {
             VStack {
                 RoundedRectangle(cornerRadius: 20)
@@ -103,7 +103,7 @@ struct TeamSlotFilledView: View {
             ZStack(alignment: .topTrailing) {
                 // Pokemon Card
                 VStack(spacing: 5) {
-                    // Pokemon Image - Custom Loader
+                    // Pokemon Image
                     Group {
                         if let uiImage = loadedImage {
                             Image(uiImage: uiImage)
@@ -132,7 +132,7 @@ struct TeamSlotFilledView: View {
                         .foregroundColor(.white)
                         .lineLimit(1)
                     
-                    // Type Icons (Updated Section)
+                    // Type Icons
                     HStack(spacing: 8) {
                         ForEach(pokemon.types, id: \.type.name) { typeWrapper in
                             VStack(spacing: 2) {

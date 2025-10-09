@@ -103,18 +103,18 @@ struct PokemonCardView: View {
             }
             
             VStack(alignment: .leading, spacing: 5) {
-                // Displaying ID
+                // ID
                 Text(String(format: "#%03d", pokemon.id))
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                // Displaying Name - NOW ADAPTS TO DARK MODE
+                // Name
                 Text(pokemon.name.capitalized)
                     .font(.title2)
                     .fontWeight(.medium)
-                    .foregroundColor(.primary)  // Changed from .black to .primary
+                    .foregroundColor(.primary)
                 
-                // Displaying Type Icons
+                // Type Icons
                 HStack(spacing: 5) {
                     ForEach(pokemon.types, id: \.type.name) { typeWrapper in
                         Image(typeWrapper.type.name.lowercased())
@@ -128,7 +128,7 @@ struct PokemonCardView: View {
             Spacer()
         }
         .padding(10)
-        .background(Color(UIColor.secondarySystemGroupedBackground))  // Changed from .white
+        .background(Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(15)
         .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
@@ -137,7 +137,7 @@ struct PokemonCardView: View {
 struct FilterView: View {
     @Binding var selectedTypes: Set<String>
     @Environment(\.dismiss) var dismiss
-    let allTypes = ["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "steel", "dark", "fairy"]
+    let allTypes = Constants.allTypes;
     
     var body: some View {
         NavigationStack {

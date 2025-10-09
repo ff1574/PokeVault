@@ -4,12 +4,11 @@ struct MainView: View {
     @EnvironmentObject var teamManager: TeamManager
     @StateObject private var pokemonService = PokemonService()
     @State private var randomPokemon: Pokemon?
-    @Binding var selectedTab: Int  // Add binding for tab navigation
+    @Binding var selectedTab: Int
     
     var body: some View {
         NavigationStack {
             ZStack {
-                // Animated Gradient Background
                 AnimatedGradientBackground()
                 
                 ScrollView {
@@ -34,7 +33,7 @@ struct MainView: View {
                         }
                         .padding(.bottom, 20)
                         
-                        // Quick Stats Cards (only 2 cards now)
+                        // Stats Cards Section
                         HStack(spacing: 15) {
                             QuickStatCard(
                                 icon: "list.bullet.circle.fill",
@@ -73,7 +72,7 @@ struct MainView: View {
                             }
                         }
                         
-                        // Quick Actions (only 2 now)
+                        // Quick Actions Section
                         VStack(alignment: .leading, spacing: 15) {
                             Text("Quick Actions")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -122,7 +121,7 @@ struct MainView: View {
     }
     
     private func loadRandomPokemon() {
-        // Wait a bit for pokemon list to load if needed
+        // Wait a bit for pokemon list to load
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             if !pokemonService.detailedPokemonList.isEmpty {
                 randomPokemon = pokemonService.detailedPokemonList.randomElement()
@@ -191,7 +190,7 @@ struct QuickStatCard: View {
     }
 }
 
-// Featured Pokemon Card - FIXED VERSION
+// Featured Pokemon Card Component
 struct FeaturedPokemonCard: View {
     let pokemon: Pokemon
     @State private var loadedImage: UIImage?
@@ -226,7 +225,6 @@ struct FeaturedPokemonCard: View {
                 
                 Spacer()
                 
-                // Fixed image loading with proper state management
                 Group {
                     if let image = loadedImage {
                         Image(uiImage: image)
@@ -264,7 +262,6 @@ struct FeaturedPokemonCard: View {
             loadImage()
         }
         .onChange(of: pokemon.id) { _ in
-            // Reset state when pokemon changes
             loadedImage = nil
             isLoading = true
             loadImage()
@@ -315,7 +312,7 @@ struct FeaturedPokemonCard: View {
     }
 }
 
-// Quick Action Button
+// Quick Action Button Component
 struct QuickActionButton: View {
     let icon: String
     let title: String
