@@ -1,11 +1,10 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var notificationsEnabled = true
-    @State private var darkModeEnabled = false
     @State private var showAbout = false
     @State private var showProfile = false
-    @AppStorage("playerName") private var playerName = "Trainer"
+    @AppStorage("playerName") private var playerName = "Ash"
+    @AppStorage("isDarkMode") private var isDarkMode = false
     
     var body: some View {
         NavigationStack {
@@ -55,36 +54,14 @@ struct SettingsView: View {
                             SectionHeader(title: "Account")
                             
                             SettingsCard {
-                                VStack(spacing: 0) {
-                                    SettingsRow(
-                                        icon: "person.circle.fill",
-                                        title: "Edit Profile",
-                                        iconColor: .blue,
-                                        showChevron: true
-                                    )
-                                    .onTapGesture {
-                                        showProfile = true
-                                    }
-                                    
-                                    Divider()
-                                        .padding(.leading, 55)
-                                    
-                                    SettingsRow(
-                                        icon: "lock.fill",
-                                        title: "Change Password",
-                                        iconColor: .red,
-                                        showChevron: true
-                                    )
-                                    
-                                    Divider()
-                                        .padding(.leading, 55)
-                                    
-                                    SettingsRow(
-                                        icon: "arrow.right.square.fill",
-                                        title: "Log Out",
-                                        iconColor: .gray,
-                                        showChevron: false
-                                    )
+                                SettingsRow(
+                                    icon: "person.circle.fill",
+                                    title: "Edit Profile",
+                                    iconColor: .blue,
+                                    showChevron: true
+                                )
+                                .onTapGesture {
+                                    showProfile = true
                                 }
                             }
                         }
@@ -95,34 +72,12 @@ struct SettingsView: View {
                             SectionHeader(title: "Preferences")
                             
                             SettingsCard {
-                                VStack(spacing: 0) {
-                                    SettingsToggleRow(
-                                        icon: "bell.fill",
-                                        title: "Notifications",
-                                        iconColor: .yellow,
-                                        isOn: $notificationsEnabled
-                                    )
-                                    
-                                    Divider()
-                                        .padding(.leading, 55)
-                                    
-                                    SettingsToggleRow(
-                                        icon: "moon.fill",
-                                        title: "Dark Mode",
-                                        iconColor: .indigo,
-                                        isOn: $darkModeEnabled
-                                    )
-                                    
-                                    Divider()
-                                        .padding(.leading, 55)
-                                    
-                                    SettingsRow(
-                                        icon: "paintbrush.fill",
-                                        title: "Appearance",
-                                        iconColor: .pink,
-                                        showChevron: true
-                                    )
-                                }
+                                SettingsToggleRow(
+                                    icon: "moon.fill",
+                                    title: "Dark Mode",
+                                    iconColor: .indigo,
+                                    isOn: $isDarkMode
+                                )
                             }
                         }
                         .padding(.horizontal)
@@ -132,36 +87,14 @@ struct SettingsView: View {
                             SectionHeader(title: "About")
                             
                             SettingsCard {
-                                VStack(spacing: 0) {
-                                    SettingsRow(
-                                        icon: "info.circle.fill",
-                                        title: "About PokeVault",
-                                        iconColor: .purple,
-                                        showChevron: true
-                                    )
-                                    .onTapGesture {
-                                        showAbout = true
-                                    }
-                                    
-                                    Divider()
-                                        .padding(.leading, 55)
-                                    
-                                    SettingsRow(
-                                        icon: "star.fill",
-                                        title: "Rate Us",
-                                        iconColor: .orange,
-                                        showChevron: true
-                                    )
-                                    
-                                    Divider()
-                                        .padding(.leading, 55)
-                                    
-                                    SettingsRow(
-                                        icon: "envelope.fill",
-                                        title: "Contact Support",
-                                        iconColor: .green,
-                                        showChevron: true
-                                    )
+                                SettingsRow(
+                                    icon: "info.circle.fill",
+                                    title: "About PokeVault",
+                                    iconColor: .purple,
+                                    showChevron: true
+                                )
+                                .onTapGesture {
+                                    showAbout = true
                                 }
                             }
                         }
@@ -309,7 +242,7 @@ struct AboutView: View {
                         Text("About")
                             .font(.headline)
                         
-                        Text("PokeVault is your ultimate Pokémon companion app. Browse the complete Pokédex, build powerful teams, and analyze type coverage to become the best trainer!")
+                        Text("PokeVault is your ultimate Pokémon companion app. Browse the complete Pokédex, build powerful teams, and analyze type coverage to become the best trainer! This project was done for a college class to showcase the capabilities of Swift. ~ Franko")
                             .font(.body)
                             .foregroundColor(.secondary)
                     }

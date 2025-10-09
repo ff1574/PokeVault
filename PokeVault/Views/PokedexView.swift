@@ -86,6 +86,7 @@ struct PokedexView: View {
 
 struct PokemonCardView: View {
     let pokemon: Pokemon
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         HStack(spacing: 15) {
@@ -107,11 +108,11 @@ struct PokemonCardView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                // Displaying Name
+                // Displaying Name - NOW ADAPTS TO DARK MODE
                 Text(pokemon.name.capitalized)
                     .font(.title2)
                     .fontWeight(.medium)
-                    .foregroundColor(.black)
+                    .foregroundColor(.primary)  // Changed from .black to .primary
                 
                 // Displaying Type Icons
                 HStack(spacing: 5) {
@@ -127,7 +128,7 @@ struct PokemonCardView: View {
             Spacer()
         }
         .padding(10)
-        .background(Color.white)
+        .background(Color(UIColor.secondarySystemGroupedBackground))  // Changed from .white
         .cornerRadius(15)
         .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
     }
@@ -135,6 +136,7 @@ struct PokemonCardView: View {
 
 struct FilterView: View {
     @Binding var selectedTypes: Set<String>
+    @Environment(\.dismiss) var dismiss
     let allTypes = ["normal", "fire", "water", "electric", "grass", "ice", "fighting", "poison", "ground", "flying", "psychic", "bug", "rock", "ghost", "dragon", "steel", "dark", "fairy"]
     
     var body: some View {
@@ -164,6 +166,13 @@ struct FilterView: View {
                 }
             }
             .navigationTitle("Filter by Type")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }

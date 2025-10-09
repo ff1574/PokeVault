@@ -2,9 +2,12 @@ import SwiftUI
 
 @main
 struct PokeVaultApp: App {
+    @AppStorage("isDarkMode") private var isDarkMode = false
+    
     var body: some Scene {
         WindowGroup {
             MainTabView()
+                .preferredColorScheme(isDarkMode ? .dark : .light)
         }
     }
 }
