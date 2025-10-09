@@ -33,21 +33,24 @@ struct SettingsView: View {
                                     .frame(width: 100, height: 100)
                                     .shadow(color: .red.opacity(0.4), radius: 10, x: 0, y: 5)
                                 
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 45))
-                                    .foregroundColor(.white)
+                                Image("ash")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 95, height: 95)
+                                    .clipShape(Circle())
                             }
                             
                             Text(playerName)
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
                             
-                            Text("Pokémon Trainer")
+                            Text("Trainer")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
                         .padding(.top, 20)
                         .padding(.bottom, 10)
+
                         
                         // Account Section
                         VStack(spacing: 12) {
