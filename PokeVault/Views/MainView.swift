@@ -261,7 +261,7 @@ struct FeaturedPokemonCard: View {
         .onAppear {
             loadImage()
         }
-        .onChange(of: pokemon.id) { _ in
+        .onChange(of: pokemon.id) {
             loadedImage = nil
             isLoading = true
             loadImage()

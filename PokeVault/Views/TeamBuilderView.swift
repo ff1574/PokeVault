@@ -1,12 +1,24 @@
 import SwiftUI
 
 struct TeamBuilderView: View {
-    @Binding var selectedTab: Int 
+    @Binding var selectedTab: Int
     @EnvironmentObject var teamManager: TeamManager
+    @StateObject private var pokemonService = PokemonService()
+    
+    // UI States
+    @State private var showUploadSheet = false
+    @State private var showSharedTeamsSheet = false
+    @State private var newTeamName = ""
+    @State private var trainerName = ""
+    @State private var uploadErrorMessage = ""
+    @State private var isUploading = false
+    @State private var fetchErrorMessage = ""
+    @State private var isFetching = false
+    @State private var showSuccessAlert = false
+    @State private var showClearTeamConfirmation = false
     
     var body: some View {
         ZStack {
-            // Background gradient
             LinearGradient(
                 gradient: Gradient(colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6)]),
                 startPoint: .topLeading,
@@ -16,21 +28,46 @@ struct TeamBuilderView: View {
             
             ScrollView {
                 VStack(spacing: 25) {
-                    // Header Section
+                    // Header
                     VStack(spacing: 10) {
-                        Text("Team Builder")
-                            .font(.system(size: 40, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                        
-                        Text("\(teamManager.team.count)/6 Pokémon")
-                            .font(.title3)
-                            .foregroundColor(.white.opacity(0.9))
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(20)
+                        HStack {
+                            Spacer()
+                            
+                            VStack(spacing: 10) {
+                                Text("Team Builder")
+                                    .font(.system(size: 40, weight: .black, design: .rounded))
+                                    .foregroundColor(.white)
+                                
+                                Text("\(teamManager.team.count)/6 Pokémon")
+                                    .font(.title3)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white.opacity(0.2))
+                                    .cornerRadius(20)
+                            }
+                            
+                            Spacer()
+                            
+                            // Clear Team Button
+                            if !teamManager.team.isEmpty {
+                                Button(action: {
+                                    showClearTeamConfirmation = true
+                                }) {
+                                    Image(systemName: "trash.fill")
+                                        .font(.title2)
+                                        .foregroundColor(.white)
+                                        .padding(10)
+                                        .background(Color.red.opacity(0.8))
+                                        .cornerRadius(10)
+                                        .shadow(color: .red.opacity(0.4), radius: 5, x: 0, y: 2)
+                                }
+                                .padding(.trailing)
+                            }
+                        }
                     }
                     .padding(.top, 20)
+
                     
                     // Team Grid
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 15), count: 2), spacing: 15) {
@@ -44,16 +81,273 @@ struct TeamBuilderView: View {
                     }
                     .padding(.horizontal)
                     
-                    // Team Statistics (only show if team has Pokemon)
+                    // Team Statistics
                     if !teamManager.team.isEmpty {
                         TeamStatisticsView()
                     }
                     
-                    Spacer(minLength: 30)
+                    // Share Actions
+                    VStack(spacing: 15) {
+                        Button(action: {
+                            showUploadSheet = true
+                            newTeamName = ""
+                            trainerName = ""
+                            uploadErrorMessage = ""
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.up.fill")
+                                    .font(.title3)
+                                Text("Upload Team")
+                                    .fontWeight(.bold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(teamManager.team.isEmpty ? Color.gray : Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(color: teamManager.team.isEmpty ? Color.gray.opacity(0.3) : Color.green.opacity(0.6), radius: 6, x: 0, y: 4)
+                        }
+                        .disabled(teamManager.team.isEmpty || isUploading)
+                        
+                        Button(action: {
+                            fetchSharedTeams()
+                            showSharedTeamsSheet = true
+                        }) {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down.fill")
+                                    .font(.title3)
+                                Text("Browse Shared Teams")
+                                    .fontWeight(.bold)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(color: Color.blue.opacity(0.6), radius: 6, x: 0, y: 4)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 30)
+                }
+            }
+        }
+        .sheet(isPresented: $showUploadSheet) {
+            uploadSheet
+        }
+        .sheet(isPresented: $showSharedTeamsSheet) {
+            sharedTeamsSheet
+        }
+        .alert("Team Uploaded!", isPresented: $showSuccessAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your team has been successfully shared!")
+        }
+        .onAppear {
+            if pokemonService.detailedPokemonList.isEmpty {
+                pokemonService.fetchPokemonList()
+            }
+        }
+        .alert("Clear Team", isPresented: $showClearTeamConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear All", role: .destructive) {
+                withAnimation {
+                    teamManager.clearTeam()
+                }
+            }
+        } message: {
+            Text("Are you sure you want to remove all Pokémon from your team?")
+        }
+
+    }
+    
+    // Upload Sheet
+    private var uploadSheet: some View {
+        NavigationStack {
+            Form {
+                Section(header: Text("Team Information")) {
+                    TextField("Team Name", text: $newTeamName)
+                        .autocapitalization(.words)
+                    TextField("Your Trainer Name", text: $trainerName)
+                        .autocapitalization(.words)
+                }
+                
+                Section {
+                    Text("You're about to share your team with \(teamManager.team.count) Pokémon")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                
+                if !uploadErrorMessage.isEmpty {
+                    Section {
+                        Text(uploadErrorMessage)
+                            .foregroundColor(.red)
+                            .font(.subheadline)
+                    }
+                }
+                
+                if isUploading {
+                    Section {
+                        HStack {
+                            Spacer()
+                            ProgressView("Uploading...")
+                            Spacer()
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Upload Team")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        showUploadSheet = false
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Upload") {
+                        uploadTeam()
+                    }
+                    .disabled(newTeamName.isEmpty || trainerName.isEmpty || isUploading)
                 }
             }
         }
     }
+    
+    // Shared Teams Sheet
+    private var sharedTeamsSheet: some View {
+        NavigationStack {
+            ZStack {
+                if isFetching {
+                    VStack {
+                        ProgressView("Loading shared teams...")
+                            .padding()
+                    }
+                } else if !fetchErrorMessage.isEmpty {
+                    VStack(spacing: 15) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                        Text(fetchErrorMessage)
+                            .foregroundColor(.red)
+                            .multilineTextAlignment(.center)
+                            .padding()
+                        Button("Retry") {
+                            fetchSharedTeams()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else if teamManager.sharedTeams.isEmpty {
+                    VStack(spacing: 15) {
+                        Image(systemName: "tray.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        Text("No shared teams found")
+                            .foregroundColor(.secondary)
+                    }
+                } else {
+                    List {
+                        ForEach(teamManager.sharedTeams) { sharedTeam in
+                            Button(action: {
+                                loadTeam(sharedTeam)
+                            }) {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack {
+                                        Image(systemName: "person.3.fill")
+                                            .foregroundColor(.blue)
+                                        Text(sharedTeam.team_name)
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                    }
+                                    
+                                    HStack {
+                                        Image(systemName: "person.circle.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Text("By: \(sharedTeam.trainer_name)")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    
+                                    HStack {
+                                        Image(systemName: "star.fill")
+                                            .font(.caption)
+                                            .foregroundColor(.yellow)
+                                        Text("\(sharedTeam.pokemon_ids.count) Pokémon")
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Shared Teams")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Close") {
+                        showSharedTeamsSheet = false
+                    }
+                }
+            }
+        }
+    }
+    
+    // Helper Functions
+    private func uploadTeam() {
+        isUploading = true
+        uploadErrorMessage = ""
+        
+        teamManager.uploadSharedTeam(teamName: newTeamName, trainerName: trainerName) { result in
+            DispatchQueue.main.async {
+                isUploading = false
+                switch result {
+                case .success:
+                    showUploadSheet = false
+                    showSuccessAlert = true
+                case .failure(let error):
+                    uploadErrorMessage = "Upload failed: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+    
+    private func fetchSharedTeams() {
+        isFetching = true
+        fetchErrorMessage = ""
+        
+        teamManager.fetchSharedTeams { result in
+            DispatchQueue.main.async {
+                isFetching = false
+                switch result {
+                case .success:
+                    break
+                case .failure(let error):
+                    fetchErrorMessage = "Failed to load teams: \(error.localizedDescription)"
+                }
+            }
+        }
+    }
+    
+    private func loadTeam(_ sharedTeam: TeamManager.SharedTeam) {
+        // Show loading indicator
+        isFetching = true
+        
+        teamManager.loadSharedTeam(
+            sharedTeam: sharedTeam,
+            allPokemon: pokemonService.detailedPokemonList,
+            pokemonService: pokemonService
+        ) {
+            DispatchQueue.main.async {
+                self.isFetching = false
+                self.showSharedTeamsSheet = false
+            }
+        }
+    }
+
 }
 
 struct TeamSlotEmptyView: View {
@@ -61,7 +355,7 @@ struct TeamSlotEmptyView: View {
     
     var body: some View {
         Button(action: {
-            selectedTab = 1  // Switch to Pokédex tab
+            selectedTab = 1
         }) {
             VStack {
                 RoundedRectangle(cornerRadius: 20)
@@ -101,9 +395,7 @@ struct TeamSlotFilledView: View {
     var body: some View {
         VStack(spacing: 8) {
             ZStack(alignment: .topTrailing) {
-                // Pokemon Card
                 VStack(spacing: 5) {
-                    // Pokemon Image
                     Group {
                         if let uiImage = loadedImage {
                             Image(uiImage: uiImage)
@@ -121,18 +413,21 @@ struct TeamSlotFilledView: View {
                                 .foregroundColor(.white.opacity(0.5))
                         }
                     }
+                    .id(pokemon.id) // Only apply ID to the image section
                     .onAppear {
                         loadImage()
                     }
-                    .id(pokemon.id) // Force reload when pokemon changes
+                    .onChange(of: pokemon.id) {
+                        loadedImage = nil
+                        isLoading = true
+                        loadImage()
+                    }
                     
-                    // Pokemon Name
                     Text(pokemon.name.capitalized)
                         .font(.headline)
                         .foregroundColor(.white)
                         .lineLimit(1)
                     
-                    // Type Icons
                     HStack(spacing: 8) {
                         ForEach(pokemon.types, id: \.type.name) { typeWrapper in
                             VStack(spacing: 2) {
@@ -160,7 +455,6 @@ struct TeamSlotFilledView: View {
                         .stroke(Color.white.opacity(0.4), lineWidth: 2)
                 )
                 
-                // Remove Button
                 Button(action: {
                     showRemoveConfirmation = true
                 }) {
@@ -191,7 +485,6 @@ struct TeamSlotFilledView: View {
             return
         }
         
-        // Check cache first
         let cache = URLCache.shared
         let request = URLRequest(url: url)
         
@@ -204,7 +497,6 @@ struct TeamSlotFilledView: View {
             return
         }
         
-        // Load from network
         URLSession.shared.dataTask(with: url) { data, response, error in
             guard let data = data,
                   let image = UIImage(data: data),
@@ -215,7 +507,6 @@ struct TeamSlotFilledView: View {
                 return
             }
             
-            // Cache the response
             let cachedData = CachedURLResponse(response: response, data: data)
             cache.storeCachedResponse(cachedData, for: request)
             
